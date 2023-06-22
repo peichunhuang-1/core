@@ -3,8 +3,8 @@ gRPC and TCP topic based communication tool
 
 Preliminary：
 
-1. Boost (1.73.0 or newer) \
-2. gRPC (1.55.0 maybe lower version may work) \
+1. Boost (1.73.0 or newer) 
+2. gRPC (1.55.0 maybe lower version may work) 
 
 Preliminary Installation:
 
@@ -24,13 +24,13 @@ $ git clone --recurse-submodules -b v1.55.0 --depth 1 --shallow-submodules https
 $ cd grpc \
 $ mkdir -p cmake/build \
 $ pushd cmake/build \
-$ cmake -DgRPC_INSTALL=ON \
-      -DgRPC_BUILD_TESTS=OFF \
-      -DCMAKE_INSTALL_PREFIX=$GRPC_INSTALL_DIR \
+$ cmake -DgRPC_INSTALL=ON 
+      -DgRPC_BUILD_TESTS=OFF 
+      -DCMAKE_INSTALL_PREFIX=$GRPC_INSTALL_DIR 
       ../.. \
 $ make -j4 \
 $ make install \
-$ popd \
+$ popd 
 
 Package Installation:
 
@@ -40,4 +40,4 @@ $ cd core/src \
 $ mkdir build \
 $ cmake -DCMAKE_PREFIX_PATH=$GRPC_INSTALL_DIR -DCMAKE_INSTALL_PREFIX=$GRPC_INSTALL_DIR .. \
 $ make -j4 \
-$ sudo make install \
+$ sudo make install 
