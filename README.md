@@ -8,10 +8,10 @@ Preliminary Installation:
 
 Boost: 
 
-Download from https://www.boost.org/users/history/version_1_73_0.html
-$ cd boost_1_73_0
-$ ./bootstrap.sh --prefix=/usr/local
-$ ./b2 install
+Download from https://www.boost.org/users/history/version_1_73_0.html \
+$ cd boost_1_73_0 \
+$ ./bootstrap.sh --prefix=/usr/local \
+$ ./b2 install \
 
 gRPC:
 
