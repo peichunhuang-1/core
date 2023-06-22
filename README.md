@@ -46,15 +46,10 @@ $ sudo make install
 
 $ cd test \
 $ mkdir build && cd build \
-$ cmake -DCMAKE_PREFIX_PATH=$GRPC_INSTALL_DIR ..
+$ cmake -DCMAKE_PREFIX_PATH=$GRPC_INSTALL_DIR .. \
 $ make -j4
 
-testing: 
+test
 
-#open server
-
-$ $GRPC_INSTALL_DIR/bin/NodeCore
-
-#open client(self sending and receiving)
-
-$ ./Test
+$ $GRPC_INSTALL_DIR/bin/NodeCore #open server \
+$ ./Test #open client(self sending and receiving)
