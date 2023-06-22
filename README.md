@@ -52,7 +52,9 @@ $ make -j4
 testing: 
 
 #open server
+
 $ $GRPC_INSTALL_DIR/bin/NodeCore
 
 #open client(self sending and receiving)
+
 $ ./Test
