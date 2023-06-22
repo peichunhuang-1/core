@@ -52,4 +52,4 @@ $ make -j4
 test
 
 $ $GRPC_INSTALL_DIR/bin/NodeCore #open server \
-$ ./Test #open client(self sending and receiving)
+$ ./Test 100 #open client(self sending and receiving with frequency variable)
