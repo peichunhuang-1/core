@@ -14,7 +14,6 @@ int main(int argc, char* argv[])
     core::NodeHandler nh("127.0.0.1", 50051, "127.0.0.1", node_ios);
     core::Publisher pub = nh.publisher("hello");
     core::Subscriber sub = nh.subscriber("hello", freq);
-    std::cout << "4\n";
     std::thread node_thread_ = std::thread([&]() {
         node_ios.run();
     });
@@ -31,7 +30,7 @@ int main(int argc, char* argv[])
         pub.publish(ep);
         sub.spinOnce(gep_callback);
         if (gep.data_size() != 0)
-            // std::cout << gep.str() << "\n";
+            std::cout << gep.str() << "\n";
         timer.wait();
     }
     return 0;
