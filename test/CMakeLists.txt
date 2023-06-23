@@ -50,6 +50,25 @@ target_link_libraries(Test
     big_proto
     registration_grpc_proto
     topic_message_grpc_proto
+    service_message_grpc_proto
+    NodeHandler
+    ${_REFLECTION}
+    ${_GRPC_GRPCPP}
+    ${_PROTOBUF_LIBPROTOBUF}
+    ${Boost_LIBRARIES})
+
+add_executable(TestService TestService.cc)
+target_include_directories(TestService PRIVATE
+${CMAKE_PREFIX_PATH}/include
+)
+target_link_directories(TestService PRIVATE
+    ${CMAKE_PREFIX_PATH}/lib
+)
+target_link_libraries(TestService
+    big_proto
+    registration_grpc_proto
+    topic_message_grpc_proto
+    service_message_grpc_proto
     NodeHandler
     ${_REFLECTION}
     ${_GRPC_GRPCPP}

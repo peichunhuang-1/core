@@ -70,6 +70,7 @@ include_directories("${CMAKE_CURRENT_BINARY_DIR}")
 add_executable(NodeCore "./Master/NodeCore.cc")
 target_link_libraries(NodeCore
   registration_grpc_proto
+  service_message_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF})
@@ -78,6 +79,7 @@ add_library(NodeHandler "./NodeHandler/NodeHandler.cc")
 target_link_libraries(NodeHandler
   registration_grpc_proto
   topic_message_grpc_proto
+  service_message_grpc_proto
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF}

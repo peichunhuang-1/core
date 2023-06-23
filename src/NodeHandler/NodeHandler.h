@@ -18,8 +18,11 @@
 #include <grpcpp/health_check_service_interface.h>
 #include <grpc/support/log.h>
 #include <grpcpp/grpcpp.h>
+#include <google/protobuf/any.pb.h>
+
 #include "registration.grpc.pb.h"
 #include "topic_message.grpc.pb.h"
+#include "service_message.grpc.pb.h"
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -36,6 +39,8 @@ namespace core
     typedef std::shared_ptr<std::string> buffer_ptr;
     class Publisher;
     class Subscriber;
+    class serviceServer;
+    class serviceClient;
     class TopicMessageServiceImpl;
     class NodeHandler 
     {
@@ -43,10 +48,16 @@ namespace core
             NodeHandler(std::string master_ip, uint16_t port, std::string local_ip, io_context &node_ios);
             friend class Publisher;
             friend class Subscriber;
+            friend class serviceServer;
+            friend class serviceClient;
             friend class TopicMessageServiceImpl;
             Publisher publisher(std::string topic_name) ;
             Subscriber subscriber(std::string topic_name, uint32_t F) ;
+            serviceServer servicepublisher(std::string service_name);
+            serviceClient servicesubscriber(std::string service_name);
         protected:
+            std::string master_ip_;
+            uint16_t master_port_;
             std::mutex _mutex;
             std::string _local_ip;
             uint32_t _local_tcp_port;
@@ -114,6 +125,84 @@ namespace core
         NodeHandler *nh_;
         std::string topic_name_;
     };
+    class serviceServer
+    {
+        public:
+            serviceServer(std::string service_name, NodeHandler* nh) 
+            : service_name_(service_name), nh_(nh) 
+            {
+                stub_ = 
+                ServiceMessage::NewStub(
+                grpc::CreateChannel(nh_->master_ip_+":"+std::to_string(nh_->master_port_), 
+                grpc::InsecureChannelCredentials()));
+                writer_ = std::unique_ptr<grpc::ClientWriter<ServiceServerMessageRequest> >(
+                stub_->ServiceServer(&context, &reply));
+            }
+            ~serviceServer() 
+            {
+                writer_->WritesDone();
+                writer_->Finish();
+            }
+            template<class T>
+            void send(T msg)
+            {
+                ServiceServerMessageRequest request;
+                request.set_service_name(service_name_);
+                google::protobuf::Any data_any;
+                data_any.PackFrom(msg);
+                *request.mutable_data() = data_any;
+                writer_->Write(request);
+            }
+        private:
+            std::string service_name_;
+            NodeHandler *nh_;
+            std::unique_ptr<grpc::ClientWriter<ServiceServerMessageRequest>> writer_;
+            std::unique_ptr<ServiceMessage::Stub> stub_;
+            ServiceServerMessageReply reply; 
+            ClientContext context;
+    };
+    class serviceClient
+    {
+        public:
+            serviceClient(std::string service_name, NodeHandler* nh) 
+            : service_name_(service_name), nh_(nh)
+            {
+                stub_ = 
+                ServiceMessage::NewStub(
+                grpc::CreateChannel(nh_->master_ip_+":"+std::to_string(nh_->master_port_), 
+                grpc::InsecureChannelCredentials()));
+                ServiceClientMessageRequest request;
+                request.set_service_name(service_name);
+                reader_ = std::unique_ptr<grpc::ClientReader<ServiceClientMessageReply>>(
+                stub_->ServiceClient(&context, request));
+                receive_thread_ = std::thread(  
+                    [this] ()
+                    {
+                        ServiceClientMessageReply reply;
+                        while(reader_->Read(&reply))
+                        {
+                            std::lock_guard<std::mutex> lock(mutex_);
+                            receive_data = reply.data();
+                        }
+                    }
+                );
+            }
+            template<class T>
+            void  get(T &get_data)
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                receive_data.UnpackTo(&get_data);
+            }
+        private:
+            std::string service_name_;
+            NodeHandler *nh_;
+            std::unique_ptr<grpc::ClientReader<ServiceClientMessageReply>> reader_;
+            google::protobuf::Any receive_data; 
+            std::unique_ptr<ServiceMessage::Stub> stub_;
+            std::mutex mutex_;
+            ClientContext context;
+            std::thread receive_thread_;
+    };
     class TopicMessageServiceImpl final : public TopicMessage::Service {
         public:
         TopicMessageServiceImpl(NodeHandler *nh) : nh_(nh) {}
@@ -158,32 +247,7 @@ namespace core
                 }
             );
             publish_thread.detach();
-            // boost::system::error_code err;
-            // std::shared_ptr<deadline_timer> timer = std::make_shared<deadline_timer>(boost::asio::deadline_timer(nh_->_node_ios));
-            // send_msg(err, sock, topic_name, timer, sleep_us);
             return Status::OK;
-        }
-        void send_msg(const boost::system::error_code& err, sock_ptr sock, const std::string topic_name, std::shared_ptr<deadline_timer> timer, const uint32_t sleep_us)
-        {
-            // std::cout << "Try Send\n";
-            if (err) return;
-            // std::cout << "Send\n";
-            timer->expires_from_now(boost::posix_time::microseconds(sleep_us));
-            try
-            {
-                // std::cout << "locked \n";
-                std::lock_guard<std::mutex> lock(nh_->_mutex);
-                // std::cout << nh_->publish_data[topic_name] << "\n";
-                if (nh_->publish_data.find(topic_name) != nh_->publish_data.end())
-                    write(*sock, boost::asio::buffer(nh_->publish_data[topic_name]));
-                // std::cout << "Write Done\n";
-            }
-            catch(const std::exception& e)
-            {
-                std::cerr << e.what() << '\n';
-                return;
-            }
-            timer->async_wait(boost::bind(&TopicMessageServiceImpl::send_msg, this, boost::asio::placeholders::error, sock, topic_name, timer, sleep_us));
         }
         private:
             NodeHandler* nh_;

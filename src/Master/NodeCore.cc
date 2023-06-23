@@ -5,12 +5,14 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
+#include <google/protobuf/any.pb.h>
 
 #include <mutex>
 #include <thread>
 #include <condition_variable>
 
 #include "registration.grpc.pb.h"
+#include "service_message.grpc.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -21,6 +23,12 @@ using core::SubscribeReply;
 using core::SubscribeRequest;
 using core::PublishReply;
 using core::PublishRequest;
+
+using core::ServiceMessage;
+using core::ServiceServerMessageReply;
+using core::ServiceServerMessageRequest;
+using core::ServiceClientMessageReply;
+using core::ServiceClientMessageRequest;
 
 struct EndPoint
 {
@@ -90,20 +98,56 @@ class RegistrationServiceImpl final : public Registration::Service {
 
 };
 
-void RunRegistrationServer(std::string ip, uint16_t port)
+class ServiceMessageServiceImpl final : public ServiceMessage::Service{
+    Status ServiceServer(ServerContext* context, grpc::ServerReader<ServiceServerMessageRequest>* reader,
+                  ServiceServerMessageReply* reply){
+        ServiceServerMessageRequest request;
+        while (reader->Read(&request))
+        {
+            std::unique_lock<std::mutex> lock(mutex_);
+            receive_service = request.service_name();
+            receive_data = request.data();
+            condition_.notify_all();
+        }
+        return Status::OK;
+    }
+    Status ServiceClient(ServerContext* context, const ServiceClientMessageRequest* request,
+                  grpc::ServerWriter<ServiceClientMessageReply>* writer){
+        const std::string service_name = request->service_name();
+        while (true)
+        {
+            ServiceClientMessageReply reply;
+            std::unique_lock<std::mutex> lock(mutex_);
+            condition_.wait(lock);
+            if (receive_service != service_name) continue;
+            *reply.mutable_data() = receive_data;
+            writer->Write(reply);
+        }
+        return Status::OK;
+    }
+    private:
+    std::mutex mutex_;
+    std::condition_variable condition_;
+    std::string receive_service = "";
+    google::protobuf::Any receive_data; 
+};
+
+void RunServer(std::string ip, uint16_t port)
 {
     std::string server_address = ip + ":" + std::to_string(port);
     RegistrationServiceImpl service;
+    ServiceMessageServiceImpl message_service;
     grpc::EnableDefaultHealthCheckService(true);
     grpc::reflection::InitProtoReflectionServerBuilderPlugin();
     ServerBuilder builder;
     builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
     builder.RegisterService(&service);
+    builder.RegisterService(&message_service);
     std::unique_ptr<Server> server(builder.BuildAndStart());
     server->Wait();
 }
 
 int main(int argc, char** argv)
 {
-    RunRegistrationServer("127.0.0.1", 50051);
+    RunServer("127.0.0.1", 50051);
 }

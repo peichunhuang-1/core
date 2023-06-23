@@ -7,7 +7,9 @@ namespace core
     _node_ios(node_ios), 
     stub_(Registration::NewStub(grpc::CreateChannel(ip+":"+std::to_string(port), grpc::InsecureChannelCredentials()))), 
     _local_ip(local_ip),
-    _node_acceptor(node_ios, ip::tcp::endpoint(ip::address::from_string(local_ip), 0))
+    _node_acceptor(node_ios, ip::tcp::endpoint(ip::address::from_string(local_ip), 0)),
+    master_ip_(ip),
+    master_port_(port)
     {
         srand(time(NULL));
         _node_name = ip + ":" + std::to_string(port) + "#" + std::to_string(rand());
@@ -76,6 +78,17 @@ namespace core
         sub_stream_thread_.detach();
         return Subscriber(topic_name, F, this);
     }
+    
+    serviceServer NodeHandler::servicepublisher(std::string service_name)
+    {
+        return serviceServer(service_name, this);
+    }
+
+    serviceClient NodeHandler::servicesubscriber(std::string service_name)
+    {
+        return serviceClient(service_name, this);
+    }
+    
     void NodeHandler::accept_handler(const boost::system::error_code &ec, sock_ptr sock, const std::string topic_name)
     {
         if (ec) return;
@@ -91,6 +104,7 @@ namespace core
             boost::bind(&NodeHandler::read_handler, this, boost::asio::placeholders::error, sock, new_buf, boost::asio::placeholders::bytes_transferred, topic_name) 
         );
     }
+
     void NodeHandler::read_handler(const boost::system::error_code &ec, sock_ptr sock, buffer_ptr buf, size_t size_of_buf, const std::string topic_name)
     {
         if (ec) return;
