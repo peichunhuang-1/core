@@ -88,6 +88,7 @@ namespace core
             {
                 T msg;
                 msg.ParseFromString(nh_->subscribe_data[topic_name_]);
+                update_ = true;
                 func(msg);
             }
         }
@@ -99,12 +100,19 @@ namespace core
             {
                 T msg;
                 msg.ParseFromString(nh_->subscribe_data[topic_name_]);
+                update_ = true;
                 func(msg);
             }
+        }
+        bool update() 
+        {
+            std::lock_guard<std::mutex> lock_guard(nh_->_mutex);
+            return update_;
         }
         private:
         NodeHandler *nh_;
         std::string topic_name_;
+        bool update_ = false;
     };
     class Publisher
     {
@@ -129,14 +137,14 @@ namespace core
     {
         public:
             serviceServer(std::string service_name, NodeHandler* nh) 
-            : service_name_(service_name), nh_(nh) 
+            : service_name_(service_name), nh_(nh), context(std::make_shared<ClientContext>())
             {
                 stub_ = 
                 ServiceMessage::NewStub(
                 grpc::CreateChannel(nh_->master_ip_+":"+std::to_string(nh_->master_port_), 
                 grpc::InsecureChannelCredentials()));
-                writer_ = std::unique_ptr<grpc::ClientWriter<ServiceServerMessageRequest> >(
-                stub_->ServiceServer(&context, &reply));
+                writer_ = std::shared_ptr<grpc::ClientWriter<ServiceServerMessageRequest> >(
+                stub_->ServiceServer(context.get(), &reply));
             }
             ~serviceServer() 
             {
@@ -156,16 +164,16 @@ namespace core
         private:
             std::string service_name_;
             NodeHandler *nh_;
-            std::unique_ptr<grpc::ClientWriter<ServiceServerMessageRequest>> writer_;
-            std::unique_ptr<ServiceMessage::Stub> stub_;
+            std::shared_ptr<grpc::ClientWriter<ServiceServerMessageRequest>> writer_;
+            std::shared_ptr<ServiceMessage::Stub> stub_;
             ServiceServerMessageReply reply; 
-            ClientContext context;
+            std::shared_ptr<ClientContext> context;
     };
     class serviceClient
     {
         public:
             serviceClient(std::string service_name, NodeHandler* nh) 
-            : service_name_(service_name), nh_(nh)
+            : service_name_(service_name), nh_(nh), context(std::make_shared<ClientContext>()), mutex_(std::make_shared<std::mutex>())
             {
                 stub_ = 
                 ServiceMessage::NewStub(
@@ -173,16 +181,17 @@ namespace core
                 grpc::InsecureChannelCredentials()));
                 ServiceClientMessageRequest request;
                 request.set_service_name(service_name);
-                reader_ = std::unique_ptr<grpc::ClientReader<ServiceClientMessageReply>>(
-                stub_->ServiceClient(&context, request));
+                reader_ = std::shared_ptr<grpc::ClientReader<ServiceClientMessageReply>>(
+                stub_->ServiceClient(context.get(), request));
                 receive_thread_ = std::thread(  
                     [this] ()
                     {
                         ServiceClientMessageReply reply;
                         while(reader_->Read(&reply))
                         {
-                            std::lock_guard<std::mutex> lock(mutex_);
+                            std::lock_guard<std::mutex> lock(*mutex_);
                             receive_data = reply.data();
+                            this->update_ = true;
                         }
                     }
                 );
@@ -190,18 +199,20 @@ namespace core
             template<class T>
             void  get(T &get_data)
             {
-                std::lock_guard<std::mutex> lock(mutex_);
+                std::lock_guard<std::mutex> lock(*mutex_);
                 receive_data.UnpackTo(&get_data);
             }
+            bool update() {return update_;}
         private:
             std::string service_name_;
             NodeHandler *nh_;
-            std::unique_ptr<grpc::ClientReader<ServiceClientMessageReply>> reader_;
+            std::shared_ptr<grpc::ClientReader<ServiceClientMessageReply>> reader_;
             google::protobuf::Any receive_data; 
-            std::unique_ptr<ServiceMessage::Stub> stub_;
-            std::mutex mutex_;
-            ClientContext context;
+            std::shared_ptr<ServiceMessage::Stub> stub_;
+            std::shared_ptr<std::mutex> mutex_;
+            std::shared_ptr<ClientContext> context;
             std::thread receive_thread_;
+            bool update_ = false;
     };
     class TopicMessageServiceImpl final : public TopicMessage::Service {
         public:

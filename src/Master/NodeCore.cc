@@ -106,6 +106,7 @@ class ServiceMessageServiceImpl final : public ServiceMessage::Service{
         {
             std::unique_lock<std::mutex> lock(mutex_);
             receive_service = request.service_name();
+            std::cout << "Receive Service " << receive_service << "\n";
             receive_data = request.data();
             condition_.notify_all();
         }
@@ -114,12 +115,14 @@ class ServiceMessageServiceImpl final : public ServiceMessage::Service{
     Status ServiceClient(ServerContext* context, const ServiceClientMessageRequest* request,
                   grpc::ServerWriter<ServiceClientMessageReply>* writer){
         const std::string service_name = request->service_name();
+        std::cout << "Wait Service " << service_name << "\n";
         while (true)
         {
             ServiceClientMessageReply reply;
             std::unique_lock<std::mutex> lock(mutex_);
             condition_.wait(lock);
             if (receive_service != service_name) continue;
+            std::cout << "Send Receive Service to Client\n";
             *reply.mutable_data() = receive_data;
             writer->Write(reply);
         }

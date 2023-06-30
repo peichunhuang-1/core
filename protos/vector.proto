@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+message Vector3i {
+  int32 x = 1;
+  int32 y = 2;
+  int32 z = 3;
+}
+
+message Vector4i {
+  int32 w = 1;
+  int32 x = 2;
+  int32 y = 3;
+  int32 z = 4;
+}
+
+message VectorXi {
+  repeated int32 data = 1;
+}
+
+message Vector3d {
+  double x = 1;
+  double y = 2;
+  double z = 3;
+}
+
+message Vector4d {
+  double w = 1;
+  double x = 2;
+  double y = 3;
+  double z = 4;
+}
+
+message VectorXd {
+  repeated double data = 1;
+}
