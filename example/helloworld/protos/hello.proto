@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package hello;
+
+message greeting {
+  bool bool_field = 1;
+  string string_field = 2;
+}
+
+message hello {
+  string string_field = 1;
+  int64 int_field = 2;
+  double double_field = 3;
+  repeated float float_array_field = 4;
+  enum GREET{
+    HI=0;
+    BYE=1;
+  }
+  GREET enum_field = 5;
+  greeting struct_field = 6;
+}

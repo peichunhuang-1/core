@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package core;
+message EndPoint {
+  string ip = 1;
+  uint32 port = 2;
+}
+service Connection {
+  rpc Subscriber (SubscriberRequest) returns (SubscriberReply) {}
+  rpc Publisher (PublisherRequest) returns (PublisherReply) {}
+}
+
+message SubscriberRequest {
+  EndPoint tcp_endpoint = 1;
+  string topic_name = 2;
+  float rate = 3;
+}
+
+message SubscriberReply {
+}
+
+message PublisherRequest {
+  string topic_name = 1;
+}
+
+message PublisherReply {
+  string topic_name = 2;
+  EndPoint tcp_endpoint = 3;
+  float rate = 4;
+}

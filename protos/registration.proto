@@ -1,0 +1,28 @@
+syntax = "proto3";
+import "connection.proto";
+package core;
+
+service Registration {
+  rpc Subscribe (SubscribeRequest) returns (stream SubscribeReply) {}
+  rpc Publish (PublishRequest) returns (stream PublishReply) {}
+}
+
+message SubscribeRequest {
+  EndPoint endpoint = 1;
+  string topic_name = 2;
+}
+
+message SubscribeReply {
+  string topic_name = 3;
+  EndPoint endpoint = 4;
+}
+
+message PublishRequest {
+  EndPoint endpoint = 1;
+  string topic_name = 2;
+}
+
+message PublishReply {
+  string topic_name = 3;
+  EndPoint endpoint = 4;
+}
