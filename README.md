@@ -33,5 +33,13 @@ For example, if you have device A (*192.168.0.106*) and device B (*192.168.0.172
 # run
     $ source ~/.bashrc 
     $ NodeCore 
-    $ ./NodeTestPub 
-    $ ./NodeTestSub 
+    $ ./NodeTestPub // terminal 1
+    $ ./NodeTestSub // terminal 2
+
+This is the basic Publisher/Subscriber protocol, it support multiple subscribers subscribe to one topic, and also multiple publishers publish to a topic is legal but not recommended.
+
+    $ NodeCore 
+    $ ./NodeTestServiceServer // terminal 1
+    $ ./NodeTestServiceClient // terminal 2
+
+This is the basic ServiceServer/Client protocol, if you launch multiple Server on one service, only the last one works functionally.
