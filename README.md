@@ -18,7 +18,8 @@ Install gRPC.
     $ echo export CORE_LOCAL_IP="127.0.0.1" >> ~/.bashrc 
     $ echo export CORE_MASTER_ADDR="127.0.0.1:10010" >> ~/.bashrc 
 
-You can also choose your setting bash file. **"CORE_LOCAL_IP"** should be your local device IP, and **"CORE_MASTER_ADDR"** should be set to same as your local/remote **NodeCore** launched device.
+You can also choose your setting bash file. **"CORE_LOCAL_IP"** should be your local device IP, and **"CORE_MASTER_ADDR"** should be set to same as your local/remote **NodeCore** 
+launched device.
 
 For example, if you have device A (*192.168.0.106*) and device B (*192.168.0.172*). And you run your core master node on device A on port 10010, then on each device A and B, the 
 **"CORE_MASTER_ADDR"** should be *192.168.0.106:10010*, and **"CORE_LOCAL_IP"** on device A is *"192.168.0.106"*, **"CORE_LOCAL_IP"** on device B is *"192.168.0.172"*. 
