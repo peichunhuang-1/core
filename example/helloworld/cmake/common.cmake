@@ -122,6 +122,7 @@ else()
   set(_CORE_LIBRARIES
   ${CMAKE_PREFIX_PATH}/lib/libregistration_grpc_proto.a
   ${CMAKE_PREFIX_PATH}/lib/libconnection_grpc_proto.a
+  ${CMAKE_PREFIX_PATH}/lib/libserviceserving_grpc_proto.a
   ${_REFLECTION}
   ${_GRPC_GRPCPP}
   ${_PROTOBUF_LIBPROTOBUF}

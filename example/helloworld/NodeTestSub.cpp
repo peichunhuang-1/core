@@ -19,9 +19,9 @@ int main() {
         core::spinOnce();
         std::string receive;
         mutex_.lock();
-        // google::protobuf::TextFormat::PrintToString(msg, &receive);
+        google::protobuf::TextFormat::PrintToString(msg, &receive);
         mutex_.unlock();
-        // std::cout << receive << "\n";
+        std::cout << receive << "\n";
         std::cout << rate.sleep() << "\n";
     }
     return 0;

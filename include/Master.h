@@ -27,7 +27,7 @@ namespace core {
             std::cout << "receive subscriber\n";
             const std::string topic_name = request->topic_name();
             {
-                std::unique_lock<std::mutex> lock(mutex_);
+                std::lock_guard<std::mutex> lock(mutex_);
                 receive_topic = topic_name;
                 receive_ip = request->endpoint().ip();
                 receive_port = request->endpoint().port();
@@ -53,7 +53,7 @@ namespace core {
             std::cout << "receive publisher\n";
             const std::string topic_name = request->topic_name();
             {
-                std::unique_lock<std::mutex> lock(mutex_);
+                std::lock_guard<std::mutex> lock(mutex_);
                 receive_topic = topic_name;
                 receive_ip = request->endpoint().ip();
                 receive_port = request->endpoint().port();
@@ -74,13 +74,55 @@ namespace core {
             std::cout << "A subscriber died\n";
             return Status::OK;
         }
+        Status ServiceServers(ServerContext* context, const ServiceServerRequest* request,
+                          ServiceServerReply *reply) override {
+            {
+                std::lock_guard<std::mutex> lock(service_mutex_);
+                service_servers[request->service_name()] = std::pair<std::string, uint32_t>(request->endpoint().ip(), request->endpoint().port());
+            }
+            service_condition_.notify_all();
+            return Status::OK;
+        }
+        Status ServiceClients(ServerContext* context, const ServiceClientRequest* request,
+                          grpc::ServerWriter<ServiceClientReply>* writer) override {
+            {
+                ServiceClientReply reply;
+                std::unique_lock<std::mutex> lock(service_mutex_);
+                auto iter = service_servers.find(request->service_name());
+                if ( iter != service_servers.end()) {
+                    core::EndPoint* endpoint = reply.mutable_endpoint();
+                    endpoint->set_ip(iter->second.first);
+                    endpoint->set_port(iter->second.second);
+                    writer->Write(reply);
+                }
+            }
+            while (1) {
+                std::unique_lock<std::mutex> lock(mutex_);
+                service_condition_.wait(lock);
+                {
+                    ServiceClientReply reply;
+                    std::lock_guard<std::mutex> lock(service_mutex_);
+                    auto iter = service_servers.find(request->service_name());
+                    if ( iter != service_servers.end()) {
+                        core::EndPoint* endpoint = reply.mutable_endpoint();
+                        endpoint->set_ip(iter->second.first);
+                        endpoint->set_port(iter->second.second);
+                        writer->Write(reply);
+                    }
+                }
+            }
+            return Status::OK;
+        }
         private:
         std::mutex mutex_;
+        std::mutex service_mutex_;
         std::condition_variable publish_condition_;
         std::condition_variable subscribe_condition_;
+        std::condition_variable service_condition_;
         std::string receive_topic = "";
         std::string receive_ip = "";
         uint32_t receive_port = 0;
+        std::unordered_map<std::string, std::pair<std::string, uint32_t> > service_servers;
     };
     void RunServer(std::string server_address) {
         RegistrationServiceImpl service;

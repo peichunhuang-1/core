@@ -13,10 +13,10 @@
 
 #include "registration.grpc.pb.h"
 #include "connection.grpc.pb.h"
+#include "serviceserving.grpc.pb.h"
+#include <google/protobuf/Any.pb.h>
 #include "Timer.h"
 
-#include "registration.grpc.pb.h"
-#include "connection.grpc.pb.h"
 #include <signal.h>
 
 namespace core {
@@ -33,10 +33,12 @@ namespace core {
     }
     class NodeHandler;
     class ConnectionServiceImpl;
+    class ServerClientServiceImpl;
     class Communicator {
         public: 
         Communicator() {}
         virtual void call(std::string &ip, uint32_t &port, float &freq) {}
+        virtual void request_handler(google::protobuf::Any request, ServingReply &reply) {}
     };
     template<class T>
     class Subscriber : public Communicator {
@@ -44,7 +46,7 @@ namespace core {
         public:
         Subscriber(std::string topic, float freq, void (*func)(T), NodeHandler *nh) ;
         void call(std::string &ip, uint32_t &port, float &freq) override {
-            std::unique_lock<std::mutex> lock(this->mutex_);
+            std::lock_guard<std::mutex> lock(this->mutex_);
             ip = this->tcp_ip;
             port = this->tcp_port;
             freq = this->rate;
@@ -75,7 +77,7 @@ namespace core {
             google::protobuf::io::CodedOutputStream *coded_output = new google::protobuf::io::CodedOutputStream(&aos);
             coded_output->WriteVarint32(msg.ByteSizeLong());
             msg.SerializeToCodedStream(coded_output);
-            std::unique_lock<std::mutex> lock(this->queue_mutex_);
+            std::lock_guard<std::mutex> lock(this->queue_mutex_);
             if (msg_queue.size() > maxSize) msg_queue.pop();
             msg_queue.push(std::string(buf, siz));
         }
@@ -93,7 +95,7 @@ namespace core {
                         while (1) {
                             std::string msg;
                             {
-                                std::unique_lock<std::mutex> lock(this->queue_mutex_);
+                                std::lock_guard<std::mutex> lock(this->queue_mutex_);
                                 if (this->msg_queue.size() > 0) {
                                     msg = this->msg_queue.back();
                                     if (!c_sock->Send(msg)) break;
@@ -115,28 +117,90 @@ namespace core {
         std::string topic_name;
         int maxSize = 10;
     };
+    template<class RequestT, class ReplyT>
+    class ServiceServer : public Communicator {
+        using FunctionType = void(*)(RequestT, ReplyT&);
+        public:
+        ServiceServer(std::string service, void(*func) (RequestT, ReplyT&), NodeHandler* nh);
+        virtual void request_handler(google::protobuf::Any request, ServingReply &reply) override {
+            RequestT request_payload;
+            ReplyT reply_payload;
+            request.UnpackTo(&request_payload);
+            this->cb_func(request_payload, reply_payload);
+            reply.mutable_payload()->PackFrom(reply_payload);
+        }
+        private:
+        FunctionType cb_func;
+        std::string service_name;
+        NodeHandler *nh_;
+    };
+    template<class RequestT, class ReplyT>
+    class ServiceClient : public Communicator {
+        public:
+        ServiceClient(std::string service, NodeHandler* nh);
+        bool pull_request(RequestT request, ReplyT &reply) {
+            std::lock_guard<std::mutex> lock(this->mutex_);
+            if (!connected) return false;
+            ServingRequest send_request;
+            ServingReply send_reply;
+            send_request.set_service_name(this->service_name);
+            send_request.mutable_payload()->PackFrom(request);
+            std::cout << "try request\n";
+            ClientContext serving_context_;
+            Status status = stub->Serving(&serving_context_, send_request, &send_reply);
+            std::cout << "request sended\n";
+            if (status.ok()) {
+                send_reply.payload().UnpackTo(&reply);;
+                return true;
+            }
+            else return false;
+        }
+        private:
+        std::string service_name;
+        std::unique_ptr<ServerClient::Stub> stub;
+        NodeHandler *nh_;
+        bool connected;
+        std::mutex mutex_;
+    };
     class NodeHandler {
         public:
         NodeHandler();
         template<class T>
         Subscriber<T>& subscribe(std::string topic, float freq, void (*func)(T)) {
             std::shared_ptr<Subscriber<T> > sub = std::make_shared<Subscriber<T> >(topic, freq, func, this);
-            std::unique_lock<std::mutex> lock(mutex_);
+            std::lock_guard<std::mutex> lock(mutex_);
             this->subscribers[topic] = sub;
             return *sub;
         }
         template<class T>
         Publisher<T>& advertise(std::string topic) {
             std::shared_ptr<Publisher<T> > pub =  std::make_shared<Publisher<T> >(topic, this);
-            std::unique_lock<std::mutex> lock(mutex_);
+            std::lock_guard<std::mutex> lock(mutex_);
             this->publishers[topic] = pub;
             return *pub;
+        }
+        template<class RequestT, class ReplyT>
+        ServiceServer<RequestT, ReplyT>& serviceServer(std::string service, void(*func) (RequestT, ReplyT&)) {
+            std::shared_ptr<ServiceServer<RequestT, ReplyT> > srv = std::make_shared<ServiceServer<RequestT, ReplyT> >(service, func, this);
+            std::lock_guard<std::mutex> lock(mutex_);
+            this->service_servers[service] = srv;
+            return *srv;
+        }
+        template<class RequestT, class ReplyT>
+        ServiceClient<RequestT, ReplyT>& serviceClient(std::string service) {
+            std::shared_ptr<ServiceClient<RequestT, ReplyT> > clt =  std::make_shared<ServiceClient<RequestT, ReplyT> >(service, this);
+            std::lock_guard<std::mutex> lock(mutex_);
+            this->service_clients[service] = clt;
+            return *clt;
         }
         std::unique_ptr<Registration::Stub> stub_;
         std::unique_ptr<Server> server;
         ConnectionServiceImpl *service;
+        ServerClientServiceImpl *service_serve;
         std::unordered_map<std::string, std::shared_ptr<Communicator> > subscribers;
         std::unordered_map<std::string, std::shared_ptr<Communicator> > publishers; 
+        std::unordered_map<std::string, std::shared_ptr<Communicator> > service_servers;
+        std::unordered_map<std::string, std::shared_ptr<Communicator> > service_clients;
         std::mutex mutex_;
         std::string local_ip;
         int rpc_port;
@@ -151,7 +215,7 @@ namespace core {
             std::string ip = request->tcp_endpoint().ip();
             uint32_t port = request->tcp_endpoint().port();
             float freq = request->rate();
-            std::unique_lock<std::mutex> lock(this->nh_->mutex_);
+            std::lock_guard<std::mutex> lock(this->nh_->mutex_);
             this->nh_->publishers[topic]->call(ip, port, freq);
             std::cout << "Receive from Subscriber " << ip << ":" << port << "\n";
             return Status::OK;
@@ -162,7 +226,7 @@ namespace core {
             std::string ip;
             uint32_t port;
             float freq;
-            std::unique_lock<std::mutex> lock(this->nh_->mutex_);
+            std::lock_guard<std::mutex> lock(this->nh_->mutex_);
             this->nh_->subscribers[topic]->call(ip, port, freq);
             core::EndPoint* endpoint = reply->mutable_tcp_endpoint();
             endpoint->set_ip(ip);
@@ -175,13 +239,25 @@ namespace core {
         private:
         NodeHandler *nh_;
     };
+    class ServerClientServiceImpl final : public ServerClient::Service {
+        public:
+        ServerClientServiceImpl(NodeHandler *nh) : nh_(nh) {}
+        Status Serving(ServerContext* context, const ServingRequest* request,
+                        ServingReply* reply) override {
+            std::lock_guard<std::mutex> lock(nh_->mutex_);
+            nh_->service_servers[request->service_name()]->request_handler(request->payload(), *reply);
+            return Status::OK;
+        }
+        private:
+        NodeHandler *nh_;
+    };
     template<class T>
     Subscriber<T>::Subscriber(std::string topic, float freq, void (*func)(T), NodeHandler *nh) :
         topic_name(topic), rate(freq), cb_func(func), nh_(nh)
     {
         /* Part I. start accepting and receiving from tcp port */
         {
-            std::unique_lock<std::mutex> lock(this->nh_->mutex_);
+            std::lock_guard<std::mutex> lock(this->nh_->mutex_);
             this->tcp_ip = this->nh_->local_ip;
             this->rpc_port = this->nh_->rpc_port;
         }
@@ -202,7 +278,7 @@ namespace core {
                                 T msg;
                                 bool ret = srv_sock->SocketHandler(msg);
                                 if (ret) {
-                                    std::unique_lock<std::mutex> lock(this->queue_mutex_);
+                                    std::lock_guard<std::mutex> lock(this->queue_mutex_);
                                     if (this->msgs_queue.size() > maxSize) this->msgs_queue.pop();
                                     this->msgs_queue.push(msg);
                                 }
@@ -222,7 +298,7 @@ namespace core {
         /* Part II. sending request to master for registration */
         SubscribeRequest request;
         {
-            std::unique_lock<std::mutex> lock(this->mutex_);
+            std::lock_guard<std::mutex> lock(this->mutex_);
             request.set_topic_name(topic);
             EndPoint* endpoint = request.mutable_endpoint();
             endpoint->set_ip(this->tcp_ip); // same as rpc ip, this is the ip of this node
@@ -234,7 +310,7 @@ namespace core {
                 this->nh_->stub_->Subscribe(&context, request));
             SubscribeReply response;
             while (stream->Read(&response)) {
-                std::unique_lock<std::mutex> lock(this->mutex_);
+                std::lock_guard<std::mutex> lock(this->mutex_);
                 SubscriberRequest subscriber_request_;
                 subscriber_request_.set_topic_name(this->topic_name);
                 subscriber_request_.set_rate(this->rate);
@@ -258,7 +334,7 @@ namespace core {
                 std::unique_lock<std::mutex> lock(this->spin_mutex_);
                 spin_cv.wait(lock);
                 {
-                    std::unique_lock<std::mutex> lock_(this->queue_mutex_);
+                    std::lock_guard<std::mutex> lock_(this->queue_mutex_);
                     if (this->msgs_queue.size() > 0) {
                         this->cb_func(this->msgs_queue.back());
                     }
@@ -273,7 +349,7 @@ namespace core {
         topic_name(topic), nh_(nh) {
         PublishRequest request;
         { 
-            std::unique_lock<std::mutex> lock(nh_->mutex_);
+            std::lock_guard<std::mutex> lock(nh_->mutex_);
             request.set_topic_name(topic);
             core::EndPoint* endpoint = request.mutable_endpoint();
             endpoint->set_ip(nh_->local_ip);
@@ -309,7 +385,7 @@ namespace core {
                             while (1) {
                                 std::string msg;
                                 {
-                                    std::unique_lock<std::mutex> lock(this->queue_mutex_);
+                                    std::lock_guard<std::mutex> lock(this->queue_mutex_);
                                     if (this->msg_queue.size() > 0)  {
                                         msg = this->msg_queue.back();
                                         if (!c_sock->Send(msg)) break;
@@ -327,17 +403,55 @@ namespace core {
         });
         master_stream_thread_.detach();
     }
+    template<class RequestT, class ReplyT>
+    ServiceServer<RequestT, ReplyT>::ServiceServer(std::string service, void(*func) (RequestT, ReplyT&), NodeHandler* nh) :
+        service_name(service), cb_func(func), nh_(nh) {
+        ClientContext context;
+        ServiceServerRequest send_request;
+        ServiceServerReply send_reply;
+        send_request.set_service_name(service);
+        core::EndPoint* endpoint = send_request.mutable_endpoint();
+        {     
+            std::lock_guard<std::mutex> lock(nh_->mutex_);
+            endpoint->set_ip(nh_->local_ip);
+            endpoint->set_port(nh_->rpc_port);
+        }
+        Status status = this->nh_->stub_->ServiceServers(&context, send_request, &send_reply);
+    }
+    template<class RequestT, class ReplyT>
+    ServiceClient<RequestT, ReplyT>::ServiceClient(std::string service, NodeHandler* nh) : 
+    service_name(service), nh_(nh), connected(false), mutex_() {
+        ServiceClientRequest request;
+        request.set_service_name(service);
+        std::thread master_stream_thread_ = std::thread([this, request]() {
+            ClientContext client_context_;
+            std::shared_ptr<grpc::ClientReader<ServiceClientReply> > stream(
+                this->nh_->stub_->ServiceClients(&client_context_, request));
+            ServiceClientReply response;
+            while (stream->Read(&response)) {
+                std::lock_guard<std::mutex> lock(this->mutex_);
+                std::cout << response.endpoint().ip()+":"+std::to_string(response.endpoint().port()) << "\n";
+                this->stub.reset(new ServerClient::Stub(
+                    grpc::CreateChannel(response.endpoint().ip()+":"+std::to_string(response.endpoint().port()), 
+                    grpc::InsecureChannelCredentials())));
+                this->connected = true;
+            }
+        });
+        master_stream_thread_.detach();
+    }
     NodeHandler::NodeHandler() :
     stub_(Registration::NewStub(grpc::CreateChannel(std::string(getenv("CORE_MASTER_ADDR")), grpc::InsecureChannelCredentials()))) {
         signal(SIGPIPE, SIG_IGN);
         local_ip = std::string(getenv("CORE_LOCAL_IP")); // ip
         master_addr = std::string(getenv("CORE_MASTER_ADDR")); // 'ip:port'
         service = new ConnectionServiceImpl(this);
+        service_serve = new ServerClientServiceImpl(this);
         grpc::EnableDefaultHealthCheckService(true);
         grpc::reflection::InitProtoReflectionServerBuilderPlugin();
         ServerBuilder builder;
         builder.AddListeningPort(local_ip + ":" + "0", grpc::InsecureServerCredentials(), &rpc_port);
         builder.RegisterService(service);
+        builder.RegisterService(service_serve);
         server = std::unique_ptr<Server>(builder.BuildAndStart());
     }
 }

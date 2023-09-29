@@ -19,3 +19,11 @@ message hello {
   GREET enum_field = 5;
   greeting struct_field = 6;
 }
+
+message hellorequest {
+  int64 index = 1;
+}
+
+message helloreply {
+  int64 index = 1;
+}

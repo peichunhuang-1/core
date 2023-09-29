@@ -5,6 +5,8 @@ package core;
 service Registration {
   rpc Subscribe (SubscribeRequest) returns (stream SubscribeReply) {}
   rpc Publish (PublishRequest) returns (stream PublishReply) {}
+  rpc ServiceServers (ServiceServerRequest) returns (ServiceServerReply) {}
+  rpc ServiceClients (ServiceClientRequest) returns (stream ServiceClientReply) {}
 }
 
 message SubscribeRequest {
@@ -25,4 +27,20 @@ message PublishRequest {
 message PublishReply {
   string topic_name = 3;
   EndPoint endpoint = 4;
+}
+
+message ServiceServerRequest {
+  EndPoint endpoint = 1;
+  string service_name = 2;
+}
+
+message ServiceServerReply {
+}
+
+message ServiceClientRequest {
+  string service_name = 1;
+}
+
+message ServiceClientReply {
+  EndPoint endpoint = 2;
 }
