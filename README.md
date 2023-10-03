@@ -1,5 +1,5 @@
 # core
-This project is a light-weight publisher-subscriber communicate protocol based on gRPC. 
+This project is a light-weight publisher-subscriber/service(Server-Client) communicate protocol based on gRPC. For cases having difficulty on installing ROS, or needy to combine control system to web page.
 
 # preliminary
 Install gRPC. 
