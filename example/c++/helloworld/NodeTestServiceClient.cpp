@@ -11,7 +11,7 @@ int main() {
     {
         hello::hellorequest request;
         hello::helloreply reply;
-        request.set_index(10);
+        request.set_index(100);
         if (clt.pull_request(request, reply)) {
             std::string receive;
             google::protobuf::TextFormat::PrintToString(reply, &receive);

@@ -18,6 +18,7 @@
 #include "Timer.h"
 
 #include <signal.h>
+#include <iomanip>
 
 namespace core {
     using grpc::Channel;
@@ -66,20 +67,28 @@ namespace core {
         int maxSize = 10;
         std::string topic_name;
     };
+    void printHex(const char* data, int length) {
+        std::cout << std::hex << std::setfill('0');
+        for (int i = 0; i < length; ++i) {
+            std::cout << std::setw(2) << static_cast<int>(static_cast<unsigned char>(data[i])) << " ";
+        }
+        std::cout << std::dec << std::endl; // Reset to decimal mode
+    }
     template<class T>
     class Publisher : public Communicator {
         public:
         Publisher(std::string topic, NodeHandler *nh);
         void publish(T msg) {
-            int siz = msg.ByteSizeLong() + 4;
+            int siz = msg.ByteSize() + 4;
             char *buf = new char [siz];
             google::protobuf::io::ArrayOutputStream aos(buf,siz);
             google::protobuf::io::CodedOutputStream *coded_output = new google::protobuf::io::CodedOutputStream(&aos);
-            coded_output->WriteVarint32(msg.ByteSizeLong());
+            coded_output->WriteLittleEndian32(msg.ByteSize());
             msg.SerializeToCodedStream(coded_output);
             std::lock_guard<std::mutex> lock(this->queue_mutex_);
             if (msg_queue.size() > maxSize) msg_queue.pop();
             msg_queue.push(std::string(buf, siz));
+            printHex(buf, siz);
         }
         void call(std::string &ip, uint32_t &port, float &freq) override {
             bool ret = false;

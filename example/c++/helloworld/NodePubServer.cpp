@@ -1,16 +1,22 @@
 #include "NodeHandler.h"
 #include "hello.pb.h"
+#include "google/protobuf/text_format.h"
+
+void cb(hello::hellorequest request, hello::helloreply &reply) {
+    std::cout << "request index\t" << request.index() << "\n";
+    reply.set_index(request.index() + 1);
+}
+
 int main() {
     core::NodeHandler nh;
     core::Rate rate(1000);
     core::Publisher<hello::hello> &pub = nh.advertise<hello::hello>("hello");
+    core::ServiceServer<hello::hellorequest, hello::helloreply> &srv = nh.serviceServer<hello::hellorequest, hello::helloreply>("hello", cb);
     int i = 0;
     while (1)
     {
-        const auto start = std::chrono::steady_clock::now();
-        i++;
-
         hello::hello msg_p;
+        i++;
         msg_p.set_string_field(std::to_string(i));
         hello::greeting *struct_ptr = msg_p.mutable_struct_field();
         struct_ptr->set_bool_field(true);
@@ -20,10 +26,7 @@ int main() {
             msg_p.mutable_float_array_field()->Add(j);
         }
         pub.publish(msg_p);
-        std::cout << "publishing\t" << msg_p.string_field() << "\n";
-	    std::cout << rate.sleep() << "\n";
-        const auto diff = std::chrono::steady_clock::now() - start;
-        std::cout << std::chrono::duration<double>(diff).count() << " seconds\n";
+        std::cout << rate.sleep() << "\n";
     }
     return 0;
 }

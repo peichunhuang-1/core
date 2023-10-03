@@ -51,7 +51,7 @@ namespace core{
             google::protobuf::uint32 size;
             google::protobuf::io::ArrayInputStream ais(buf,4);
             google::protobuf::io::CodedInputStream coded_input(&ais);
-            coded_input.ReadVarint32(&size);
+            coded_input.ReadLittleEndian32(&size);
             return size;
         }
         bool readBody(T &payload, google::protobuf::uint32 siz) {
@@ -63,7 +63,7 @@ namespace core{
             }
             google::protobuf::io::ArrayInputStream ais(buffer,siz+4);
             google::protobuf::io::CodedInputStream coded_input(&ais);
-            coded_input.ReadVarint32(&siz);
+            coded_input.ReadLittleEndian32(&siz);
             google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
             payload.ParseFromCodedStream(&coded_input);
             coded_input.PopLimit(msgLimit);

@@ -52,9 +52,12 @@ foreach(PROTONAME ${PROTONAMES})
       ${_GRPC_GRPCPP}
       ${_PROTOBUF_LIBPROTOBUF})
     
-    target_public_headers("${PROTONAME}_grpc_proto" 
+    target_public_headers(
+    "${PROTONAME}_grpc_proto" 
+    "${PROTO_PATH}/${PROTONAME}.proto" 
     "${CMAKE_CURRENT_BINARY_DIR}/${PROTONAME}.grpc.pb.h"
     "${CMAKE_CURRENT_BINARY_DIR}/${PROTONAME}.pb.h")
+
     INSTALL(TARGETS "${PROTONAME}_grpc_proto"
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}

@@ -12,7 +12,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/build)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/common.cmake)
 
 # generate proto file c/c++ interface
-set(PROTO_PATH "${CMAKE_CURRENT_LIST_DIR}/protos")
+set(PROTO_PATH "${CMAKE_CURRENT_LIST_DIR}/../../protos")
 file(GLOB PROTO_FILES "${PROTO_PATH}/*.proto")
 
 foreach(PROTO_FILE ${PROTO_FILES})
@@ -56,5 +56,13 @@ target_link_libraries(NodeTestServiceServer
   hello_proto)
 add_executable(NodeTestServiceClient "NodeTestServiceClient.cpp")
 target_link_libraries(NodeTestServiceClient
+  ${_CORE_LIBRARIES}
+  hello_proto)
+add_executable(NodeSubClient "NodeSubClient.cpp")
+target_link_libraries(NodeSubClient
+  ${_CORE_LIBRARIES}
+  hello_proto)
+add_executable(NodePubServer "NodePubServer.cpp")
+target_link_libraries(NodePubServer
   ${_CORE_LIBRARIES}
   hello_proto)
