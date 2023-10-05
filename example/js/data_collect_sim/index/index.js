@@ -14,9 +14,8 @@ const data = {
 };
 
 let index = 0;
-const event_socket = new WebSocket('ws://localhost:8080');
+const event_socket = new WebSocket('ws://192.168.0.16:8080');
 event_socket.onmessage = function (event) {
-    console.log("receive data");
     const message = JSON.parse(event.data);
     data.qx.push(message.qx);
     data.qy.push(message.qy);
