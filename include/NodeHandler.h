@@ -67,13 +67,6 @@ namespace core {
         int maxSize = 10;
         std::string topic_name;
     };
-    void printHex(const char* data, int length) {
-        std::cout << std::hex << std::setfill('0');
-        for (int i = 0; i < length; ++i) {
-            std::cout << std::setw(2) << static_cast<int>(static_cast<unsigned char>(data[i])) << " ";
-        }
-        std::cout << std::dec << std::endl; // Reset to decimal mode
-    }
     template<class T>
     class Publisher : public Communicator {
         public:
@@ -88,7 +81,6 @@ namespace core {
             std::lock_guard<std::mutex> lock(this->queue_mutex_);
             if (msg_queue.size() > maxSize) msg_queue.pop();
             msg_queue.push(std::string(buf, siz));
-            printHex(buf, siz);
         }
         void call(std::string &ip, uint32_t &port, float &freq) override {
             bool ret = false;
@@ -154,10 +146,8 @@ namespace core {
             ServingReply send_reply;
             send_request.set_service_name(this->service_name);
             send_request.mutable_payload()->PackFrom(request);
-            std::cout << "try request\n";
             ClientContext serving_context_;
             Status status = stub->Serving(&serving_context_, send_request, &send_reply);
-            std::cout << "request sended\n";
             if (status.ok()) {
                 send_reply.payload().UnpackTo(&reply);;
                 return true;

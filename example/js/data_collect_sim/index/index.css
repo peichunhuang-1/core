@@ -1,0 +1,58 @@
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+}
+
+#canvas-wrapper {
+  width: 50%; 
+  height: 100vh; 
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: #f0f0f0; /* Background color for the wrapper */
+}
+#canvas-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#chart-wrapper {
+  width: 50%; 
+  height: 90vh; 
+  position: fixed;
+  top:0vh;
+  left: 50%;
+  background-color: #f0f0f0; /* Background color for the wrapper */
+}
+#acceleration-chart-container {
+  width: 100%;
+  height: 50%;
+  top:0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+#twist-chart-container {
+  width: 100%;
+  height: 50%;
+  top:50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f0f0f0;
+}
+
+#control-wrapper {
+  width: 50%; /* Occupy 1/4 of the width */
+  height: 10vh; /* Occupy 1/4 of the height */
+  position: fixed;
+  top:90vh;
+  left: 50%;
+  background-color: #f0f0f0; /* Background color for the wrapper */
+}

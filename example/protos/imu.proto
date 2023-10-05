@@ -1,0 +1,32 @@
+syntax = "proto3";
+package sensor_msg;
+
+message Array3d {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  repeated float covariance = 4;
+}
+
+message Array4d {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+  float w = 4;
+  repeated float covariance = 5;
+}
+
+message imu {
+  int32 timestamp = 1;
+  Array3d acceleration = 2;
+  Array3d twist = 3;
+  Array4d attitude = 4;
+}
+
+message imu_calibration_request {
+    int32 inteval = 1;
+}
+
+message imu_calibration_reply {
+    bool state = 2;
+}

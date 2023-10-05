@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "@grpc/grpc-js": "^1.9.4",
+    "express": "^4.18.2",
     "net": "^1.0.2",
+    "prom-client": "^14.2.0",
     "ws": "^8.14.2"
   }
 }
