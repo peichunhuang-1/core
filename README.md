@@ -67,4 +67,12 @@ First you should install node and npm.
 All these node should be able to cooperate with c++ program. if you got some error, it might mostly because the message definition. The js message with _{alphabet} would become upper case in nested structure. For exmaple if you use hello.hello: 
 string_field in js declaration should be : **{stringField: "hello"}** instead of : **{string_field: "hello"}**
 
-    
+# Further example
+
+Combine c program and js to obtain a user interface and dashboard. As example data-collect-sim shows.
+
+
+
+https://github.com/peichunhuang-1/core/assets/60284084/56a771a4-5e06-49cb-9c31-0d61e9d8d8bd
+
+
