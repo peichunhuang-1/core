@@ -69,7 +69,7 @@ string_field in js declaration should be : **{stringField: "hello"}** instead of
 
 # Further example
 
-Combine c program and js to obtain a user interface and dashboard. As example data-collect-sim shows.
+Combine c program and js to obtain a user interface and dashboard. In data-collect-sim, we write a virtual IMU with bias in c, and shows data and get calibration command from web UI.
 
 
 
