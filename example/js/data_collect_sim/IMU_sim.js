@@ -21,7 +21,7 @@ function subscriber_callback(request) {
     timestamp = request.timestamp;
 }
 const imu_proto = root.lookup('sensor_msg.imu');
-const imu_sub = Subscriber("imu", 1000, subscriber_callback, imu_proto);
+const imu_sub = Subscriber("imu", 200, subscriber_callback, imu_proto);
 
 const imu_clt = ServiceClient("imu", reply_call_back, root, 'sensor_msg.imu_calibration_request', 'sensor_msg.imu_calibration_reply');
 

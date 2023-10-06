@@ -13,12 +13,12 @@
     <div id="acceleration-chart-container"></div>
     <div id="twist-chart-container"></div>
   </div>
-  <div id="control-wrapper">
-    <div class="input-wrapper" id="time_input">
-      <label for="time inteval"> time inteval</label>
+  <div id="control-wrapper" style="display: flex; justify-content: center; padding: 20px; border: 1px solid #ccc;">
+    <div class="input-wrapper" id="time_input" style="margin-right: 200px;">
+      <label for="Calibration time (ms)"> Calibration time (ms)</label>
       <input type="text" id="time" style="width: 80px;">
     </div>
-    <button id="imu calibration" onclick="calibration_cb()">Calibration</button>
+    <button id="imu calibration" onclick="calibration_cb()" style="width: 100px; height: 40px;">Calibrate</button>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>

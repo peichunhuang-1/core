@@ -12,7 +12,56 @@ const data = {
     tz: new Array(queue_size),
     timestamp: new Array(queue_size)
 };
-
+const data_accel = [{
+    x: data.timestamp,
+    y: data.ax,
+    type: 'scatter',
+    name: 'X-accel.'
+}, {
+    x: data.timestamp,
+    y: data.ay,
+    type: 'scatter',
+    name: 'Y-accel.'
+}, {
+    x: data.timestamp,
+    y: data.az,
+    type: 'scatter',
+    name: 'Z-accel.'
+}];
+const data_twist = [{
+    x: data.timestamp,
+    y: data.tx,
+    type: 'scatter',
+    name: 'X-twist'
+}, {
+    x: data.timestamp,
+    y: data.ty,
+    type: 'scatter',
+    name: 'Y-twist'
+}, {
+    x: data.timestamp,
+    y: data.tz,
+    type: 'scatter',
+    name: 'Z-twist'
+}];
+Plotly.newPlot('acceleration-chart-container', data_accel, {
+    title: "3-Axis Acceleration",
+    xaxis: {
+    title: 'time (ms)'
+    },
+    yaxis: {
+    title: 'accel. (g)'
+    }
+});
+Plotly.newPlot('twist-chart-container', data_twist, {
+    title: "3-Axis Twist",
+    xaxis: {
+    title: 'time (ms)'
+    },
+    yaxis: {
+    title: 'twist. (rad/s)'
+    }
+});
 let index = 0;
 const event_socket = new WebSocket('ws://192.168.0.16:8080');
 event_socket.onmessage = function (event) {
@@ -39,66 +88,25 @@ event_socket.onmessage = function (event) {
     data.ty.shift();
     data.tz.shift();
     data.timestamp.shift();
-    const data_accel = [{
-        x: data.timestamp,
-        y: data.ax,
-        type: 'scatter',
-        name: 'X-accel.'
-    }, {
-        x: data.timestamp,
-        y: data.ay,
-        type: 'scatter',
-        name: 'Y-accel.'
-    }, {
-        x: data.timestamp,
-        y: data.az,
-        type: 'scatter',
-        name: 'Z-accel.'
-    },];
-    const data_twist = [{
-        x: data.timestamp,
-        y: data.tx,
-        type: 'scatter',
-        name: 'X-twist'
-    }, {
-        x: data.timestamp,
-        y: data.ty,
-        type: 'scatter',
-        name: 'Y-twist'
-    }, {
-        x: data.timestamp,
-        y: data.tz,
-        type: 'scatter',
-        name: 'Z-twist'
-    },];
-    Plotly.newPlot('acceleration-chart-container', data_accel, {
-        title: "3-Axis Acceleration",
-        xaxis: {
-        title: 'time (ms)'
-        },
-        yaxis: {
-        title: 'accel. (g)'
-        }
-    });
-    Plotly.newPlot('twist-chart-container', data_twist, {
-        title: "3-Axis Twist",
-        xaxis: {
-        title: 'time (ms)'
-        },
-        yaxis: {
-        title: 'accel. (g)'
-        }
-    });
 };
+
+const plot_id = setInterval(() => {
+    Plotly.update('acceleration-chart-container', {
+        x: [data.timestamp, data.timestamp, data.timestamp],
+        y: [data.ax, data.ay, data.az]});
+    Plotly.update('twist-chart-container', {
+        x: [data.timestamp, data.timestamp, data.timestamp],
+        y: [data.tx, data.ty, data.tz]});
+}, 100);
+
 const calibration_cb = function() {
-const input = document.getElementById('time').value;
-console.log("click: \t", input);
-event_socket.send(JSON.stringify({
-    inteval: input
-}));
+    const input = document.getElementById('time').value;
+    event_socket.send(JSON.stringify({
+        inteval: input
+    }));
 }
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setClearColor(0xcccccc, 1.0);
@@ -106,7 +114,10 @@ renderer.setClearColor(0xcccccc, 1.0);
 const canvasWrapper = document.getElementById('canvas-wrapper');
 const wrapperWidth = canvasWrapper.offsetWidth;
 const wrapperHeight = canvasWrapper.offsetHeight;
+camera.aspect = wrapperWidth / wrapperHeight;
+camera.updateProjectionMatrix();
 renderer.setSize(wrapperWidth, wrapperHeight);
+
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 const geometry = new THREE.BoxGeometry(1, 0.1, 0.5);
@@ -119,8 +130,8 @@ cube_with_edge.add(cube);
 cube_with_edge.add(line)
 scene.add(cube_with_edge);
 
-camera.position.set(1, 0.3, 0.8);
-camera.lookAt(0, 0, 0);
+camera.position.set(1, 1, 1);
+camera.lookAt(0.5, 0.5, 0.5);
 
 const animate = function () {
     const quaternion = new THREE.Quaternion(data.qx.slice(-1)[0], data.qy.slice(-1)[0], data.qz.slice(-1)[0], data.qw.slice(-1)[0]);

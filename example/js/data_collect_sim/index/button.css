@@ -1,0 +1,45 @@
+.button {
+display: inline-block;
+position: relative;
+padding: 10px 20px;
+background-color: rgb(70, 85, 69);
+color: white;
+cursor: pointer;
+}
+.button::before{
+content: "";
+position: absolute;
+top: 5px;
+left: 15px;
+width: 2px;
+height: 1px;
+background-color: rgba(91, 123, 78, 0.567);
+box-shadow: 0 0 10px 5px rgba(128, 166, 107, 0.567);
+border-radius: 50%;
+}
+
+.button.active {
+background-color: rgb(56, 183, 56);
+box-shadow: 0 0 10px rgba(179, 206, 170, 0.6);
+}
+.button.active::before {
+content: "";
+position: absolute;
+top: 5px;
+left: 15px;
+width: 0px;
+height: 0px;
+background-color: rgba(232, 242, 233, 0.99);
+box-shadow: 0 0 10px 10px rgba(228, 255, 215, 0.567);
+border-radius: 50%;
+}
+.button-text {
+    position: absolute;
+    font-size: 12px;
+    white-space: nowrap;
+    color: black;
+    font-family: Arial;
+    font-weight: bold;
+    top: 100%;
+    left: 10%;
+}
