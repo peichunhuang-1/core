@@ -18,9 +18,10 @@ message Array4d {
 
 message imu {
   int32 timestamp = 1;
-  Array3d acceleration = 2;
-  Array3d twist = 3;
-  Array4d attitude = 4;
+  int32 timestamp_us = 2;
+  Array3d acceleration = 3;
+  Array3d twist = 4;
+  Array4d attitude = 5;
 }
 
 message imu_calibration_request {

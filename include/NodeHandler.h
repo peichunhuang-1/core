@@ -29,6 +29,7 @@ namespace core {
     using grpc::ServerContext;
     using grpc::Status;
     std::condition_variable spin_cv;
+    std::mutex spin_mutex_;
     void spinOnce() {
         spin_cv.notify_all();
     }
@@ -58,7 +59,7 @@ namespace core {
         std::queue<T> msgs_queue;
         std::mutex mutex_;
         std::mutex queue_mutex_;
-        std::mutex spin_mutex_;
+        
         uint32_t tcp_port;
         uint32_t rpc_port;
         std::string tcp_ip;
@@ -169,6 +170,7 @@ namespace core {
             std::shared_ptr<Subscriber<T> > sub = std::make_shared<Subscriber<T> >(topic, freq, func, this);
             std::lock_guard<std::mutex> lock(mutex_);
             this->subscribers[topic] = sub;
+            usleep(100000);
             return *sub;
         }
         template<class T>
@@ -176,6 +178,7 @@ namespace core {
             std::shared_ptr<Publisher<T> > pub =  std::make_shared<Publisher<T> >(topic, this);
             std::lock_guard<std::mutex> lock(mutex_);
             this->publishers[topic] = pub;
+            usleep(100000);
             return *pub;
         }
         template<class RequestT, class ReplyT>
@@ -183,6 +186,7 @@ namespace core {
             std::shared_ptr<ServiceServer<RequestT, ReplyT> > srv = std::make_shared<ServiceServer<RequestT, ReplyT> >(service, func, this);
             std::lock_guard<std::mutex> lock(mutex_);
             this->service_servers[service] = srv;
+            usleep(100000);
             return *srv;
         }
         template<class RequestT, class ReplyT>
@@ -190,6 +194,7 @@ namespace core {
             std::shared_ptr<ServiceClient<RequestT, ReplyT> > clt =  std::make_shared<ServiceClient<RequestT, ReplyT> >(service, this);
             std::lock_guard<std::mutex> lock(mutex_);
             this->service_clients[service] = clt;
+            usleep(100000);
             return *clt;
         }
         std::unique_ptr<Registration::Stub> stub_;
@@ -330,7 +335,7 @@ namespace core {
         /* Part III. start the spin handler thread */
         std::thread spin_thread_ = std::thread([this]() {
             while (true) {
-                std::unique_lock<std::mutex> lock(this->spin_mutex_);
+                std::unique_lock<std::mutex> lock(spin_mutex_);
                 spin_cv.wait(lock);
                 {
                     std::lock_guard<std::mutex> lock_(this->queue_mutex_);

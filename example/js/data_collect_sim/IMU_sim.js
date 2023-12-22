@@ -6,7 +6,8 @@ const fs = require('fs');
 const WebSocket = require('ws');
 const path = require('path');  
 
-const root = protobuf.loadSync(`${process.env.HOME}/Desktop/core/example/protos`+"/imu.proto");
+// const root = protobuf.loadSync(`${process.env.HOME}/Desktop/core/example/protos`+"/imu.proto");
+const root = protobuf.loadSync("../..protos/imu.proto");
 function reply_call_back(reply) {
     console.log(reply);
 }
@@ -26,16 +27,38 @@ const imu_sub = Subscriber("imu", 200, subscriber_callback, imu_proto);
 const imu_clt = ServiceClient("imu", reply_call_back, root, 'sensor_msg.imu_calibration_request', 'sensor_msg.imu_calibration_reply');
 
 const server = http.createServer(function(request, response) {
-fs.readFile(path.join(__dirname, 'index', 'index.html'), function(error, data) {
-    if (error) {
-    response.writeHead(500);
-    response.end('Error loading index.html');
-    console.log(__dirname);
-    } else {
-    response.writeHead(200, { 'Content-Type': 'text/html' });
-    response.end(data);
+    let filePath = '.' + request.url;
+    if (filePath === './') {
+      filePath = './index.html';
     }
-});
+  
+    const extname = path.extname(filePath);
+    let contentType = 'text/html';
+    switch (extname) {
+        case '.js':
+          contentType = 'text/javascript';
+          break;
+        case '.css':
+          contentType = 'text/css';
+          break;
+        default:
+          contentType = 'text/html';
+      }
+    
+      fs.readFile(filePath, (err, content) => {
+        if (err) {
+          if (err.code === 'ENOENT') {
+            response.writeHead(404);
+            response.end('File not found');
+          } else {
+            response.writeHead(500);
+            response.end(`Server Error: ${err.code}`);
+          }
+        } else {
+          response.writeHead(200, { 'Content-Type': contentType });
+          response.end(content, 'utf-8');
+        }
+      });
 });
 
 const port = 8080;
