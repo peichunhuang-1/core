@@ -56,12 +56,13 @@ namespace core{
         }
         bool readBody(T &payload, google::protobuf::uint32 siz) {
             int bytecount;
-            char buffer [siz+4];
-            if((bytecount = recv(this->socket_, (void *)buffer, 4+siz, MSG_WAITALL))== -1){
+            // char buffer [siz+4];
+            std::vector<char> buffer(siz+4);
+            if((bytecount = recv(this->socket_, (void *)buffer.data(), 4+siz, MSG_WAITALL))== -1){
                 std::cerr << "Error receiving data\n";
                 return false;
             }
-            google::protobuf::io::ArrayInputStream ais(buffer,siz+4);
+            google::protobuf::io::ArrayInputStream ais(buffer.data(),siz+4);
             google::protobuf::io::CodedInputStream coded_input(&ais);
             coded_input.ReadLittleEndian32(&siz);
             google::protobuf::io::CodedInputStream::Limit msgLimit = coded_input.PushLimit(siz);
@@ -144,7 +145,7 @@ namespace core{
             serverAddr.sin_family = AF_INET;
             serverAddr.sin_port = htons(0);
             serverAddr.sin_addr.s_addr = inet_addr(server_ip.c_str());
-            if (bind(this->socket_, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+            if (::bind(this->socket_, (sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
                 std::cerr << "Error binding.\n";
                 close(this->socket_);
                 ret = false;
