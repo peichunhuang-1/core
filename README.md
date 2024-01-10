@@ -55,6 +55,7 @@ First you should install node and npm.
     $ npm init
     $ npm install @grpc/grpc-js
     $ npm install protobufjs
+    $ npm install ws
     
 # JavaScript example
     $ NodeCore
