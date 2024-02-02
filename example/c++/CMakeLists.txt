@@ -45,5 +45,3 @@ include_directories("${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 
 add_subdirectory(helloworld)
 add_subdirectory(data_collect_sim)
-# add_subdirectory(corgi)
-add_subdirectory(imu)

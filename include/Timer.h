@@ -87,8 +87,8 @@ namespace core {
             }
             bool sleep() {
                 uint64_t* time = ((uint64_t*)buf);
-                while (current > *time) {
-                    usleep(1000);
+                while (current >= *time) {
+                    usleep(100);
                     time = ((uint64_t*)buf);
                 }
                 current += sleep_us;
