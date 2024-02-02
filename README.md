@@ -26,7 +26,7 @@ For example, if you have device A (**192.168.0.106**) and device B (**192.168.0.
 **"CORE_MASTER_ADDR"** should be **"192.168.0.106:10010"**, and **"CORE_LOCAL_IP"** on device A is **"192.168.0.106"**, **"CORE_LOCAL_IP"** on device B is **"192.168.0.172"**. 
 
 # example compile
-    $ cd ${worker space}/core/example/c++/helloworld 
+    $ cd ${worker space}/core/example/c++
     $ mkdir build 
     $ cd build 
     $ cmake .. -DCMAKE_PREFIX_PATH=${grpc-install-prefix} 
@@ -55,6 +55,7 @@ First you should install node and npm.
     $ npm init
     $ npm install @grpc/grpc-js
     $ npm install protobufjs
+    $ npm install ws
     
 # JavaScript example
     $ NodeCore
