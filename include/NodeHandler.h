@@ -100,7 +100,9 @@ namespace core {
                                 std::lock_guard<std::mutex> lock(this->queue_mutex_);
                                 if (this->msg_queue.size() > 0) {
                                     msg = this->msg_queue.back();
-                                    if (!c_sock->Send(msg)) break;
+                                    if (!c_sock->Send(msg)) {
+                                        break;
+                                    }
                                 }
                             }
                             // c_sock->Send(msg);

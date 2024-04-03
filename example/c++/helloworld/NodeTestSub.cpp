@@ -12,17 +12,18 @@ void cb(hello::hello m) {
 int main() {
     core::NodeHandler nh;
     core::Rate rate(1000);
-    core::Subscriber<hello::hello> &sub = nh.subscribe<hello::hello>("hello", 500, cb);
+    core::Subscriber<hello::hello> &sub = nh.subscribe<hello::hello>("hello", 1000, cb);
     int i = 0;
     while (1)
     {
         core::spinOnce();
         std::string receive;
         mutex_.lock();
-        google::protobuf::TextFormat::PrintToString(msg, &receive);
+        // google::protobuf::TextFormat::PrintToString(msg, &receive);
         mutex_.unlock();
-        std::cout << receive << "\n";
-        std::cout << rate.sleep() << "\n";
+        // std::cout << receive << "\n";
+        // std::cout << rate.sleep() << "\n";
+        rate.sleep();
     }
     return 0;
 }

@@ -6,7 +6,9 @@
 #include <google/protobuf/io/coded_stream.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 
+#include <fcntl.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <resolv.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -15,6 +17,14 @@
 
 #include <iostream>
 
+#ifndef SOCK_NONBLOCK
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
+#ifndef IPTOS_LOWDELAY
+#define IPTOS_LOWDELAY 0x10
+#endif
+
 /* specific for protobuf sending */
 namespace core{
     template<class T>
@@ -22,7 +32,7 @@ namespace core{
         public:
         ServerSocket() {}
         ServerSocket(int sock) : socket_(sock) {}
-        bool SocketHandler(T &msg) {
+        inline bool SocketHandler(T &msg) {
             char buffer[4];
             int bytecount=0;
             memset(buffer, '\0', 4);
@@ -47,14 +57,14 @@ namespace core{
         }
         private:
         int socket_;
-        google::protobuf::uint32 readHdr(char* buf) {
+        inline google::protobuf::uint32 readHdr(char* buf) {
             google::protobuf::uint32 size;
             google::protobuf::io::ArrayInputStream ais(buf,4);
             google::protobuf::io::CodedInputStream coded_input(&ais);
             coded_input.ReadLittleEndian32(&size);
             return size;
         }
-        bool readBody(T &payload, google::protobuf::uint32 siz) {
+        inline bool readBody(T &payload, google::protobuf::uint32 siz) {
             int bytecount;
             // char buffer [siz+4];
             std::vector<char> buffer(siz+4);
@@ -81,10 +91,18 @@ namespace core{
             }
             int* sockopt_ptr = (int*)malloc(sizeof(int));
             *sockopt_ptr = 1;
+            int tos_value = IPTOS_LOWDELAY;
+            int sndbuf_size = 8. * 1024; // 1 MB
+            int rcvbuf_size = 8. * 1024; // 1 MB
             if( (setsockopt(this->socket_, SOL_SOCKET, SO_REUSEADDR, (char*)sockopt_ptr, sizeof(int)) == -1 )||
-            (setsockopt(this->socket_, SOL_SOCKET, SO_KEEPALIVE, (char*)sockopt_ptr, sizeof(int)) == -1 ) ){
+            (setsockopt(this->socket_, SOL_SOCKET, SO_KEEPALIVE, (char*)sockopt_ptr, sizeof(int)) == -1 ) ||
+            (setsockopt(this->socket_, IPPROTO_TCP, TCP_NODELAY, (char*)sockopt_ptr, sizeof(int)) == -1 ) ||
+            (setsockopt(this->socket_, IPPROTO_IP, IP_TOS, &tos_value, sizeof(tos_value)) == -1) || 
+            (setsockopt(this->socket_, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size)) == -1) ||
+            (setsockopt(this->socket_, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) == -1)) {
                 std::cerr << "Error setting TCP client.\n";
                 ret = false;
+                return;
             }
             ret = true;
         }
@@ -96,7 +114,7 @@ namespace core{
                 std::cerr << "Error closing socket\n";
             }
         }
-        bool Connect(std::string server_ip, uint32_t server_port) {
+        inline bool Connect(std::string server_ip, uint32_t server_port) {
             sockaddr_in server_addr;
             server_addr.sin_family = AF_INET ;
             server_addr.sin_port = htons(server_port);
@@ -108,12 +126,13 @@ namespace core{
             }
             return true;
         }
-        bool Send(std::string data) {
+        inline bool Send(std::string data) {
             int bytecount;
             try {
                 bytecount = send(this->socket_, data.c_str(), data.length(), 0);
             }
             catch (const std::exception& e) {
+                std::cerr << e.what() << "\n";
                 bytecount = -1;
             }
             if( bytecount == -1 ) {
@@ -136,8 +155,15 @@ namespace core{
             }
             int* sockopt_ptr = (int*)malloc(sizeof(int));
             *sockopt_ptr = 1;
+            int tos_value = IPTOS_LOWDELAY;
+            int sndbuf_size = 8. * 1024; // 1 MB
+            int rcvbuf_size = 8. * 1024; // 1 MB
             if( (setsockopt(this->socket_, SOL_SOCKET, SO_REUSEADDR, (char*)sockopt_ptr, sizeof(int)) == -1 )||
-            (setsockopt(this->socket_, SOL_SOCKET, SO_KEEPALIVE, (char*)sockopt_ptr, sizeof(int)) == -1 ) ){
+            (setsockopt(this->socket_, SOL_SOCKET, SO_KEEPALIVE, (char*)sockopt_ptr, sizeof(int)) == -1 ) ||
+            (setsockopt(this->socket_, IPPROTO_TCP, TCP_NODELAY, (char*)sockopt_ptr, sizeof(int)) == -1 ) ||
+            (setsockopt(this->socket_, IPPROTO_IP, IP_TOS, &tos_value, sizeof(tos_value)) == -1) || 
+            (setsockopt(this->socket_, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, sizeof(sndbuf_size)) == -1) ||
+            (setsockopt(this->socket_, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, sizeof(rcvbuf_size)) == -1)){
                 std::cerr << "Error setting TCP server.\n";
                 ret = false;
             }
@@ -169,7 +195,7 @@ namespace core{
                 std::cerr << "Error closing acceptor socket\n";
             }
         }
-        bool Accept(int &s_sock) {
+        inline bool Accept(int &s_sock) {
             int sock;
             socklen_t addr_size = sizeof(sockaddr_in);
             sockaddr_in sadr;

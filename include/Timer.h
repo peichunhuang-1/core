@@ -30,7 +30,12 @@ namespace core {
         std::chrono::time_point<std::chrono::steady_clock> desired;
     };
     #else
-
+    #include <iostream>
+    #include <sys/types.h>
+    #include <sys/ipc.h>
+    #include <sys/shm.h>
+    #include <sys/mman.h>
+    #include <semaphore.h>
     class Ticker {
         public:
             Ticker() {
@@ -51,19 +56,26 @@ namespace core {
                 fd,
                 0);
                 if(buf == MAP_FAILED) printf("mmap failed!, %s\n", strerror(errno));
+                sem = sem_open("/SIMULATION_SEM", O_CREAT, 0777, 0);
+                if(sem == SEM_FAILED) {
+                    std::cerr << "sem_open failed!, " << strerror(errno) << std::endl;
+                }
             }
             void tick(uint64_t current_time_us) {
                 uint64_t* time = ((uint64_t*)buf);
                 *time = current_time_us;
+                sem_post(sem);
             }
             ~Ticker() {
                 const char* shared_memory_name = "SIMULATION_TIME_US";
                 if(munmap(buf, sizeof(uint64_t)) != 0) printf("munmap failed!, %s\n", strerror(errno));
                 if(shm_unlink(shared_memory_name) != 0) printf("shm_unlink failed!, %s\n", strerror(errno));
+                sem_unlink("/SIMULATION_SEM");
             }
         private:
             int fd;
             void *buf;
+            sem_t* sem;
     };
     class Rate {
         public:
@@ -84,21 +96,34 @@ namespace core {
                 fd,
                 0);
                 if(buf == MAP_FAILED) printf("mmap failed!, %s\n", strerror(errno));
+
+                sem = sem_open("/SIMULATION_SEM", O_CREAT, 0777, 0);
+                if(sem == SEM_FAILED) {
+                    std::cerr << "sem_open failed!, " << strerror(errno) << std::endl;
+                }
             }
             bool sleep() {
                 uint64_t* time = ((uint64_t*)buf);
                 while (current >= *time) {
+                    sem_wait(sem);
+                    sem_post(sem);
                     usleep(100);
                     time = ((uint64_t*)buf);
                 }
                 current += sleep_us;
                 return true;
             }
+            ~Rate() {
+                shm_unlink("SIMULATION_TIME_US");
+                sem_close(sem);
+                sem_unlink("/SIMULATION_SEM");
+            }
         private:
             uint64_t current = 0;
             int sleep_us;
             int fd;
             void *buf;
+            sem_t* sem;
     };
 
     #endif

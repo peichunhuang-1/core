@@ -7,7 +7,7 @@ int main() {
     int i = 0;
     while (1)
     {
-        const auto start = std::chrono::steady_clock::now();
+        // const auto start = std::chrono::steady_clock::now();
         i++;
 
         hello::hello msg_p;
@@ -19,12 +19,13 @@ int main() {
         for (int j = 0; j < 100; j ++) {
             msg_p.mutable_float_array_field()->Add(j);
         }
-        std::cout << "message length\t" << msg_p.ByteSizeLong() << "\n";
+        // std::cout << "message length\t" << msg_p.ByteSizeLong() << "\n";
         pub.publish(msg_p);
-        std::cout << "publishing\t" << msg_p.string_field() << "\n";
-	    std::cout << rate.sleep() << "\n";
-        const auto diff = std::chrono::steady_clock::now() - start;
-        std::cout << std::chrono::duration<double>(diff).count() << " seconds\n";
+        // std::cout << "publishing\t" << msg_p.string_field() << "\n";
+	    // std::cout << rate.sleep() << "\n";
+        // const auto diff = std::chrono::steady_clock::now() - start;
+        // std::cout << std::chrono::duration<double>(diff).count() << " seconds\n";
+        rate.sleep();
     }
     return 0;
 }
